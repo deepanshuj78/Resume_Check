@@ -1,7 +1,7 @@
 import pdfplumber
 import re
 import spacy
-from config import FLAT_SKILLS_BANK
+from Config import FLAT_SKILLS_BANK
 try:
     nlp = spacy.load("en_core_web_sm")
 except OSError:
