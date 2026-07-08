@@ -659,20 +659,48 @@ if run_clicked or st.session_state.analysis_done:
                 _, target_skills, _ = parse_candidate_metadata(job_desc)
                 job_skills_lower = {s.lower().strip() for s in target_skills} if target_skills else set()
                 
-                # Extract candidate skills
-                if "Skills_List" in top_candidate.index and pd.notna(top_candidate["Skills_List"]):
-                    candidate_skills_raw = top_candidate["Skills_List"]
-                else:
-                    candidate_skills_raw = []
+                # Extract + normalize candidate skills safely (handles None/NaN/stringified lists/comma strings)
+                candidate_skills_raw = []
+                if "Skills_List" in top_candidate.index:
+                    val = top_candidate["Skills_List"]
+                    # Avoid pd.notna crash for nested/unexpected types; treat missing/NaN as empty.
+                    try:
+                        if pd.notna(val):
+                            candidate_skills_raw = val
+                    except Exception:
+                        candidate_skills_raw = []
+
+                def _normalize_skills_to_set(raw):
+                    if raw is None:
+                        return set()
+                    if isinstance(raw, float) and pd.isna(raw):
+                        return set()
+                    if isinstance(raw, list):
+                        return {str(s).lower().strip() for s in raw if str(s).strip()}
+                    if isinstance(raw, str):
+                        s = raw.strip()
+                        if not s:
+                            return set()
+                        # If it looks like a python-list string, try to parse.
+                        if s.startswith("[") and s.endswith("]"):
+                            import ast
+                            try:
+                                parsed = ast.literal_eval(s)
+                                if isinstance(parsed, list):
+                                    return {str(x).lower().strip() for x in parsed if str(x).strip()}
+                            except Exception:
+                                pass
+                        # Otherwise treat as comma-separated string.
+                        return {part.strip().lower() for part in s.split(",") if part.strip()}
+                    # Unknown type
+                    return set()
+
+                resume_skills_lower = _normalize_skills_to_set(candidate_skills_raw)
                 
-                # Process skills into lowercase set
-                if isinstance(candidate_skills_raw, list):
-                    resume_skills_lower = {str(s).lower().strip() for s in candidate_skills_raw}
-                elif isinstance(candidate_skills_raw, str):
-                    resume_skills_lower = {s.lower().strip() for s in candidate_skills_raw.split(",")}
-                else:
+                # Defensive: ensure resume_skills_lower is always a set
+                if not isinstance(resume_skills_lower, set):
                     resume_skills_lower = set()
-                
+
                 missing_skills_set = job_skills_lower - resume_skills_lower
                 if missing_skills_set:
                     missing_formatted = ", ".join([f"'{s.upper()}'" for s in list(missing_skills_set)[:4]])
@@ -709,8 +737,6 @@ if run_clicked or st.session_state.analysis_done:
                     badge_bg = "rgba(239, 68, 68, 0.15)"
                     badge_text = "#EF4444"
                     badge_border = "rgba(239, 68, 68, 0.3)"
-                
-                # Save to session state for persistence
                 st.session_state.analysis_done = True
                 st.session_state.score_val = score_val
                 st.session_state.grade = grade
@@ -727,9 +753,9 @@ if run_clicked or st.session_state.analysis_done:
                 layout_col1, layout_col2 = st.columns([1, 2.2], gap="medium")
                 with layout_col1:
                     st.markdown(f"""
-                        <div class="ats-score-card">
+                        <div class="ats-score-card" style="height: 100%; min-height: 220px; display: flex; flex-direction: column; justify-content: center;">
                             <div class="circle-score" style="color: {badge_text}; font-size: 3.8rem; font-weight: 800; line-height: 1;">{score_val}</div>
-                            <div class="circle-label" style="color: #6B7280; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">ATS Match Score</div>
+                            <div class="circle-label" style="color: #6B7280; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-top: 4px;">ATS Match Score</div>
                             <div style="background-color: {badge_bg}; color: {badge_text}; border: 1px solid {badge_border}; padding: 6px 16px; border-radius: 9999px; font-weight: 600; font-size: 13px; display: inline-block; margin-top: 12px;">
                                 Grade: {grade}
                             </div>
@@ -755,138 +781,77 @@ if run_clicked or st.session_state.analysis_done:
                     st.markdown(f'<p style="color: #374151; font-weight: 600; font-size: 15px; margin-bottom: 8px;">Experience Benchmark Metric: <span style="color: #2563EB; font-weight: 700;">{exp_score}/100</span></p>', unsafe_allow_html=True)
                     st.progress(exp_score / 100)
                 with bar_col2:
-                    st.markdown(f'<p style="color: #374151; font-weight: 600; font-size: 15px; margin-bottom: 8px;">🔑 Target Keywords Density Ratio: <span style="color: #2563EB; font-weight: 700;">{score_val}/100</span></p>', unsafe_allow_html=True)
+                    st.markdown(
+                        f'<p style="color: #374151; font-weight: 600; font-size: 15px; margin-bottom: 8px;">'
+                        f'🔑 Target Keywords Density Ratio: '
+                        f'<span style="color: #2563EB; font-weight: 700;">{score_val}/100</span></p>',
+                        unsafe_allow_html=True,
+                    )
                     st.progress(score_val / 100)
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    st.write("")
-            #         display_missing_options = []
-            #         if missing_keywords:
-            #         display_missing_options = missing_keywords  
-            #         else:
-            #         display_missing_options = ["None Detected"]
-            #         st.subheader("💡 AI Optimization Playground")
-            #         with st.container():
-            # st.markdown(
-            #     "**Select detected missing keywords to dynamically generate optimized resume content:**"
-            # )
-            # selected_keywords = st.multiselect(
-            #     "Gaps Identified in Pipeline Analysis:",
-            #     options=display_missing_options,
-            #     key="selected_missing_keywords"
-            # )
-            # if st.button(
-            #     "✨ Generate Optimized Experience Bullet",
-            #     type="secondary",
-            #     use_container_width=True,
-            #     key="generate_bullet"
-            # ):
-            #     if selected_keywords and "None Detected" not in selected_keywords:
-            #         keywords_str = ", ".join(keyword.upper() for keyword in selected_keywords)
-            #         st.session_state["optimized_bullet"] = (
-            #             f"Engineered scalable project solutions integrating "
-            #             f"{keywords_str} core technical methodologies to maximize "
-            #             f"platform performance, automation, and cross-functional "
-            #             f"collaboration while improving system reliability."
-            #         )
-            #     else:
-            #         st.session_state["optimized_bullet"] = ""
-            #         st.warning("No missing keywords selected or the profile is already optimized.")
-            # if "optimized_bullet" in st.session_state and st.session_state["optimized_bullet"] != "":
-            #     st.success("### Suggested Resume Bullet")
-            #     st.markdown(st.session_state["optimized_bullet"])
-        #  st.markdown("<br>", unsafe_allow_html=True)
-        # st.subheader("🧠 Live Candidate AI Quiz Generator")
-        # with st.container():
-        #     st.write("Generate a real-time technical screening quiz based on the candidate's core missing keywords:")
-        #     selected_keywords = st.session_state.selected_missing_keywords
+    st.markdown("### 🧠 Live Candidate AI Quiz Generator")
+st.markdown("Generate a real-time technical screening quiz based on the candidate's core missing keywords:")
+if "generated_quiz_data" not in st.session_state:
+    st.session_state["generated_quiz_data"] = None
+if st.button(
+    "🧬 Generate Screening Quiz from Missing Skills",
+    type="primary",
+    use_container_width=True,
+    key="generate_quiz_btn",
+):
+    missing_keywords = st.session_state.get("selected_missing_keywords", [])
+    if not missing_keywords or "None Detected" in missing_keywords:
+        skills_source = st.session_state.get("missing_skills_set", {"CSS", "GIT", "HTML", "NODE.JS"})
+        missing_keywords = sorted({k.upper().strip() for k in skills_source if str(k).strip()})
 
-        #     if st.button("🚀 Generate Screening Quiz from Missing Skills", type="primary", use_container_width=True, key="generate_quiz"):
-        #         if selected_keywords and selected_keywords != ["None Detected"]:
-        #             st.session_state.show_quiz = True
-        #             st.session_state.quiz_keywords = list(selected_keywords)
-        #             st.session_state.quiz_submitted = False
-        #         else:
-        #             st.warning("Please verify skill selections inside the playground drop-down menu first.")
+    if missing_keywords and "None Detected" not in missing_keywords:
+        # Save structured questions cleanly
+        st.session_state["generated_quiz_data"] = {
+            "keywords": ", ".join(k.upper() for k in missing_keywords[:6]),
+            "q1": f"Describe a scenario where you implemented {missing_keywords[0] if len(missing_keywords) > 0 else 'CSS'} to optimize systemic performance.",
+            "q2": f"What are the most common bottlenecks encountered when introducing {missing_keywords[1] if len(missing_keywords) > 1 else 'GIT'} into a legacy system?",
+            "q3": "Walk through your debugging process when a service encounters an unhandled runtime exception."
+        }
+    else:
+        st.session_state["generated_quiz_data"] = None
+        st.warning("Please select or detect missing keywords first.")
 
-        #     if st.session_state.show_quiz and st.session_state.quiz_keywords:
-        #         st.write("---")
-        #         quiz_keywords = st.session_state.quiz_keywords
-        #         st.markdown(f"### 📋 Technical Screening Assessment (`Tags: {', '.join([k.upper() for k in quiz_keywords])}`) ")
-        #         answers_map = {}
-        #         for idx, skill in enumerate(quiz_keywords, 1):
-        #             normalized_skill = skill.lower().strip()
-        #             if normalized_skill == "html":
-        #                 st.markdown(f"**Question {idx}.1 (HTML):** What is the functional semantic difference between a layout `<section>` element and a generic `<div>` wrapper container?")
-        #                 q1_ans = st.radio("Select Correct Core Architecture Answer:", ["No difference", "Semantic containers aid accessibility, SEO, and document outline models", "Divs are deprecated in modern HTML5 schemas"], key=f"q_mc_{idx}")
-        #                 answers_map[f"q_mc_{idx}"] = {"user": q1_ans, "correct": "Semantic containers aid accessibility, SEO, and document outline models"}
-
-        #                 st.markdown(f"**Question {idx}.2 (HTML):** True or False: A `<section>` element always provides better accessibility than a `<div>.")
-        #                 q2_ans = st.radio("Answer:", ["True", "False"], key=f"q_tf_{idx}")
-        #                 answers_map[f"q_tf_{idx}"] = {"user": q2_ans, "correct": "False"}
-
-        #                 st.markdown(f"**Question {idx}.3 (HTML):** Which attribute is mandatory to optimize search engine crawling on a picture element fallback path?")
-        #                 q3_ans = st.radio("Select Layout Flag:", ["alt attribute text", "style declaration parameters", "loading lazy tags"], key=f"q_{idx}_3")
-        #                 answers_map[f"q_{idx}_3"] = {"user": q3_ans, "correct": "alt attribute text"}
-        #             elif normalized_skill == "css":
-        #                 st.markdown(f"**Question {idx}.1 (CSS):** Explain the functional priority rendering chain of the browser engine's box model cascade sequence.")
-        #                 q1_ans = st.radio("Select Correct Core Architecture Answer:", ["Inline styles > ID selectors > Class selectors > Element tags", "Class elements completely override structural root declarations", "Element tag settings maintain execution authority"], key=f"q_mc_{idx}")
-        #                 answers_map[f"q_mc_{idx}"] = {"user": q1_ans, "correct": "Inline styles > ID selectors > Class selectors > Element tags"}
-
-        #                 st.markdown(f"**Question {idx}.2 (CSS):** True or False: CSS specificity determines which rules apply when multiple selectors match the same element.")
-        #                 q2_ans = st.radio("Answer:", ["True", "False"], key=f"q_tf_{idx}")
-        #                 answers_map[f"q_tf_{idx}"] = {"user": q2_ans, "correct": "True"}
-
-        #                 st.markdown(f"**Question {idx}.3 (CSS):** What layout strategy is optimized to force flexible grid elements to align directly down a vertical center vector alignment?")
-        #                 q3_ans = st.radio("Select Property Configuration:", ["align-items: center", "float: left clear layout", "display: text block inline"], key=f"q_{idx}_3")
-        #                 answers_map[f"q_{idx}_3"] = {"user": q3_ans, "correct": "align-items: center"}
-        #             else:
-        #                 st.markdown(f"**Question {idx}.1 ({skill.upper()}):** Describe production deployment optimization pipelines regarding critical dependencies for **{skill.upper()}**.")
-        #                 q1_ans = st.radio("Select Correct Core Architecture Answer:", ["Minification and tree-shaking protocols", "Disabling development log frames entirely", "Skipping build verification tests"], key=f"q_mc_{idx}")
-        #                 answers_map[f"q_mc_{idx}"] = {"user": q1_ans, "correct": "Minification and tree-shaking protocols"}
-
-        #                 st.markdown(f"**Question {idx}.2 ({skill.upper()}):** True or False: Production deployment optimization always requires disabling build verification tests.")
-        #                 q2_ans = st.radio("Answer:", ["True", "False"], key=f"q_tf_{idx}")
-        #                 answers_map[f"q_tf_{idx}"] = {"user": q2_ans, "correct": "False"}
-
-        #                 st.markdown(f"**Question {idx}.3 ({skill.upper()}):** What is the core structural performance risk involved when installing unverified external modules inside the production build environment?")
-        #                 q3_ans = st.radio("Select Architectural Tradeoff:", ["Dependency bloat and potential security vulnerabilities", "Complete styling interface compilation drops", "Automatic script runtime acceleration"], key=f"q_{idx}_3")
-        #                 answers_map[f"q_{idx}_3"] = {"user": q3_ans, "correct": "Dependency bloat and potential security vulnerabilities"}
-
-        #         st.write("")
-        #         if st.button("Submit Assessment Log Framework", type="secondary", key="submit_assessment"):
-        #             total_questions = len(answers_map)
-        #             correct_count = sum(1 for key, val in answers_map.items() if val["user"] == val["correct"])
-        #             score_percentage = (correct_count / total_questions) * 100 if total_questions > 0 else 0
-        #             st.session_state.quiz_submitted = True
-        #             st.session_state.final_score = f"{correct_count} / {total_questions}"
-        #             st.session_state.final_percentage = score_percentage
-
-        #         if st.session_state.get("quiz_submitted", False):
-        #             st.success("Candidate technical score tracking matrix dispatched to system database logs successfully!")
-        #             with st.container():
-        #                 st.markdown("### 📊 Live Screening Examination Results")
-        #                 col_score, col_grade = st.columns(2)
-        #                 with col_score:
-        #                     st.metric(label="Total Correct Evaluation Matches", value=st.session_state.final_score)
-        #                 with col_grade:
-        #                     st.metric(label="Final Matrix Performance Percentage", value=f"{st.session_state.final_percentage:.1f}%")
-        #                 if st.session_state.final_percentage >= 70:
-        #                     if hasattr(st, "balloons"):
-        #                         st.balloons()
-        #                     st.info("💡 **AI Recruiter Decision Log:** Candidate exhibits robust fundamentals inside technical gaps. Proceeding directly to structural codebase layout panel checks.")
-        #                 else:
-        #                     st.warning("⚠️ **AI Recruiter Decision Log:** Performance levels down trend core framework thresholds. Targeted remedial deployment upskilling modules suggested prior to system entry logs.")
-        #         elif st.session_state.show_quiz:
-        #             st.warning("Please select missing keywords first to build the quiz.")
-        #     elif st.session_state.show_quiz:
-        #         st.warning("Please select missing keywords first to build the quiz.")
-
-        # st.markdown("<br>", unsafe_allow_html=True)
-        # st.subheader("📋 Tailored Interview Kit")
-        # with st.expander("🤖 View Detailed AI Interview Questions for this Candidate", expanded=False):
-        #     st.write("These questions are automatically tailored to address the specific performance patterns observed:")
-        #     gap_text = keyword_feedback.split('such as ')[-1] if 'such as ' in keyword_feedback else 'core role tools'
-        #     st.markdown(f"""
-        #         1. **Technical Alignment:** *\"During our platform check, we noted architectural gaps regarding {gap_text}. Can you explain how you plan to integrate these methods into your dev pipeline?\"*
-        #         2. **Experience Benchmarking:** *\"Can you detail a complex deployment you managed that directly aligns with **{category}** vertical architectures?\"*
-        #         """)
+# --- PERFECTLY ALIGNED DISPLAY CONTAINER ---
+if st.session_state["generated_quiz_data"]:
+    quiz = st.session_state["generated_quiz_data"]
+    
+    # Bordered container creates a unified card wrapper
+    with st.container(border=True):
+        st.markdown(f"### 📋 Technical Screening Quiz (`{quiz['keywords']}`)")
+        st.caption("Review the generated questions below. You can log candidate responses directly into the form.")
+        st.divider()
+        
+        # Question 1: Question text serves as the clean, direct label for the input box
+        st.text_area(
+            label=f"**1. Core Architecture:** {quiz['q1']}", 
+            key="ans_q1", 
+            placeholder="Type candidate response or notes here...", 
+            height=90
+        )
+        st.markdown("<br>", unsafe_allow_html=True) # Clean spacing element
+        
+        # Question 2
+        st.text_area(
+            label=f"**2. Integration Challenges:** {quiz['q2']}", 
+            key="ans_q2", 
+            placeholder="Type candidate response or notes here...", 
+            height=90
+        )
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Question 3
+        st.text_area(
+            label=f"**3. Practical Application:** {quiz['q3']}", 
+            key="ans_q3", 
+            placeholder="Type candidate response or notes here...", 
+            height=90
+        )
+        st.divider()
+        with st.expander("💡 View Recruiter Evaluation Guide"):
+            st.markdown("**Look for these key indicators in their answers:**")
+            st.markdown(f"- Clear metrics regarding scalability and system stability when discussing `{quiz['keywords']}`.")
+            st.markdown("- Structural understanding of deployment strategies, version control, or execution contexts.")
