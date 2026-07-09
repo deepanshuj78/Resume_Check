@@ -1,6 +1,7 @@
 import os
 import base64
 import html
+import random
 import pandas as pd
 import streamlit as st
 from parser_engine import extract_text_from_pdf, clean_text_stream, parse_candidate_metadata
@@ -250,41 +251,48 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 st.markdown("""
-    <div style="text-align: center; padding: 28px 20px 16px 20px; background: linear-gradient(135deg, #FFFFFF 0%, #F9FAFB 100%); border-radius: 16px; margin-bottom: 24px;">
+    <div style="text-align: center; padding: 32px 20px 24px 20px; background: linear-gradient(135deg, #FFFFFF 0%, #F9FAFB 100%); border-radius: 16px; margin-bottom: 24px border: 1px solid #E5E7EB;">
         <h1 style="color: #1F2937; font-size: 2.8rem; font-weight: 900; margin-bottom: 8px; letter-spacing: -1px;">
             🚀 AI Resume Screener | NovaNectar
         </h1>
-        <p style="color: #6B7280; font-size: 1.05rem; max-width: 600px; margin: 0 auto; font-weight: 500;">
+        <p style="color: #4B5563; font-size: 1.05rem; max-width: 600px; margin: 0 auto; font-weight: 500; text-align:center;">
             Instantly check how well a candidate fits your role with AI-powered analysis.
         </p>
     </div>
 """, unsafe_allow_html=True)
-st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-st.markdown('<h3 style="color: #1F2937; font-weight: 700; font-size: 1.4rem; margin-bottom: 16px;">📥 Step 1: Upload Application</h3>', unsafe_allow_html=True)
-
+st.markdown(""" <br>
+            <div style="margin-top: 24px 0 16px 0;"> <h3 style="color: #0F172A; font-weight: 700; font-size: 1.4rem; margin: 0 0 6px 0; display: flex; align-items: center; gap: 8px;"> 📥 Step 1: Upload Application</h3> <p style="color: #6B7280; font-size: 0.875rem; margin: 0;"> Upload the candidate's resume file below (PDF format supported up to 5MB).
+        </p> </div>""", unsafe_allow_html=True)
 st.markdown("""
     <style>
         [data-testid="stFileUploader"] {
             background-color: transparent !important;
+            margin-bottom: 12px !important;
         }
         [data-testid="stFileUploader"] section {
-            background: linear-gradient(135deg, #F0F9FF 0%, #F9FAFB 100%) !important;
-            border: 2px dashed #3B82F6 !important;
-            border-radius: 14px !important;
-            padding: 32px !important;
+            background-color: #F8FAFC !important; 
+            border: 2px dashed #CBD5E1 !important;
+            border-radius: 12px !important;
+            padding: 24px 16px !important;
             text-align: center !important;
-            transition: all 0.3s ease !important;
-            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1) !important;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
         }
         [data-testid="stFileUploader"] section:hover {
-            border-color: #2563EB !important;
-            box-shadow: 0 8px 12px -1px rgba(59, 130, 246, 0.2) !important;
-            background: linear-gradient(135deg, #E0F2FE 0%, #F0F9FF 100%) !important;
+            border-color: #3B82F6 !important; /* Modern vibrant blue on action focus */
+            background-color: #F0F9FF !important; /* Soft sky blue tint on active state */
+            box-shadow: 0 4px 12px -2px rgba(59, 130, 246, 0.12) !important;
+            transform: translateY(-1px);
         }
-        [data-testid="stFileUploader"] section [data-testid="stMarkdownContainer"] {
+        [data-testid="stFileUploader"] section [data-testid="stMarkdownContainer"] p {
             display: none !important;
         }
         [data-testid="stFileUploaderDropzone"] {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 12px !important;
             text-align: center !important;
         }
         [data-testid="stFileUploader"] button {
@@ -295,26 +303,25 @@ st.markdown("""
             font-weight: 600 !important;
             border-radius: 8px !important;
             font-size: 14px !important;
-            transition: all 0.3s ease !important;
-            box-shadow: 0 4px 6px rgba(59, 130, 246, 0.25) !important;
+            transition: all 0.25s ease !important;
+            box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2) !important;
         }
         [data-testid="stFileUploader"] button:hover {
             background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
-            box-shadow: 0 8px 12px rgba(59, 130, 246, 0.35) !important;
-            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3) !important;
+            transform: translateY(-1px) !important; /* Slight lift is cleaner than 2px */
         }
     </style>
-    <div style="margin-bottom: 8px;">
-        <p style="color: #6B7280; font-size: 15px; font-weight: 500; margin: 0;">📄 Select Resume File</p>
+    <div style="margin: 20px 0 10px 0;">
+        <p style="color: #0F172A; font-size: 15px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 6px;"> <br> 📄 Select Resume File</p>
     </div>
 """, unsafe_allow_html=True)
-
 uploaded_file = st.file_uploader(
     "Drag and drop your PDF resume here or click to browse", 
     type=["pdf"], 
     accept_multiple_files=False,
+    label_visibility="collapsed"
 )
-
 st.markdown("""
     <div style="margin-top: 12px; padding: 12px 16px; background-color: #F3F4F6; border-radius: 8px; border-left: 4px solid #10B981;">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
@@ -340,7 +347,6 @@ else:
     file_bytes = uploaded_file.getvalue()
     encoded_pdf = base64.b64encode(file_bytes).decode("utf-8")
     safe_file_name = html.escape(uploaded_file.name)
-
     st.markdown(f"""
         <style>
             .staged-card {{
@@ -581,12 +587,14 @@ st.markdown("""
 left_space, center_target, right_space = st.columns([1.5, 1.2, 1.5])
 with center_target:
     st.markdown('<div class="run-button-wrapper">', unsafe_allow_html=True)
-    run_clicked = st.button("🚀 Run AI Match Ranker", type="primary", use_container_width=True, key="run_analysis")
+    run_clicked = st.button("🚀 Run AI (Calculate ATS Scores)", type="primary", use_container_width=True, key="run_analysis")
     st.markdown('</div>', unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
 if "analysis_done" not in st.session_state:
     st.session_state.analysis_done = False
+    st.session_state.ats_run_completed = False
+
     st.session_state.missing_skills_set = set()
     st.session_state.keyword_feedback = ""
     st.session_state.category = ""
@@ -601,6 +609,12 @@ if "analysis_done" not in st.session_state:
     st.session_state.badge_bg = ""
     st.session_state.badge_text = ""
     st.session_state.badge_border = ""
+
+# ---- Quiz generation state (required by the MCQ selector) ----
+if "used_question_ids" not in st.session_state:
+    st.session_state.used_question_ids = set()
+if "generated_quiz_data" not in st.session_state:
+    st.session_state.generated_quiz_data = None
 if run_clicked or st.session_state.analysis_done:
     recompute = run_clicked
     if not recompute:
@@ -788,70 +802,135 @@ if run_clicked or st.session_state.analysis_done:
                         unsafe_allow_html=True,
                     )
                     st.progress(score_val / 100)
-    st.markdown("### 🧠 Live Candidate AI Quiz Generator")
-st.markdown("Generate a real-time technical screening quiz based on the candidate's core missing keywords:")
+                    import streamlit as st
+import random
+
+# ==========================================
+# 1. INITIALIZE ALL STATES (Fixes the invisible button)
+# ==========================================
+if "ats_run_completed" not in st.session_state:
+    st.session_state["ats_run_completed"] = False
+
+if "quiz_generation_triggered" not in st.session_state:
+    st.session_state["quiz_generation_triggered"] = False
+
+if "used_question_ids" not in st.session_state:
+    st.session_state["used_question_ids"] = set()
+
 if "generated_quiz_data" not in st.session_state:
     st.session_state["generated_quiz_data"] = None
-if st.button(
-    "🧬 Generate Screening Quiz from Missing Skills",
-    type="primary",
-    use_container_width=True,
-    key="generate_quiz_btn",
-):
-    missing_keywords = st.session_state.get("selected_missing_keywords", [])
-    if not missing_keywords or "None Detected" in missing_keywords:
-        skills_source = st.session_state.get("missing_skills_set", {"CSS", "GIT", "HTML", "NODE.JS"})
-        missing_keywords = sorted({k.upper().strip() for k in skills_source if str(k).strip()})
 
-    if missing_keywords and "None Detected" not in missing_keywords:
-        # Save structured questions cleanly
+
+# ==========================================
+# TEST SIMULATOR (Remove this section in production)
+# ==========================================
+st.sidebar.markdown("### 🛠️ Developer Testing Panel")
+st.session_state["ats_run_completed"] = st.sidebar.checkbox(
+    "Simulate: ATS Scan Completed", 
+    value=st.session_state["ats_run_completed"]
+)
+
+if st.sidebar.button("Reset Whole App State"):
+    st.session_state["ats_run_completed"] = False
+    st.session_state["quiz_generation_triggered"] = False
+    st.session_state["generated_quiz_data"] = None
+    st.session_state["used_question_ids"] = set()
+    st.rerun()
+# ==========================================
+
+
+# Mock Data Bank for execution verification
+MCQ_BANK = {
+    "GITHUB": [{"id": 1, "question": "What command initializes a git repo?", "options": ["git init", "git start"], "answer": "git init", "explanation": "Initializes a repository."}],
+    "HTML": [{"id": 2, "question": "What does HTML stand for?", "options": ["HyperText Markup Language", "HighText Machine"], "answer": "HyperText Markup Language", "explanation": "Standard markup language."}],
+    "CSS": [{"id": 3, "question": "Which property changes text color?", "options": ["color", "text-color"], "answer": "color", "explanation": "Changes text element foreground colors."}],
+    "MONGODB": [{"id": 4, "question": "MongoDB is what type of database?", "options": ["NoSQL", "SQL"], "answer": "NoSQL", "explanation": "Document store database."}],
+    "AI": [{"id": 5, "question": "What does LLM stand for?", "options": ["Large Language Model", "Local Machine"], "answer": "Large Language Model", "explanation": "AI text model architectures."}]
+}
+
+
+# --- STAGE 1: ATS Evaluation Complete Trigger ---
+# This button will ONLY show up if st.session_state["ats_run_completed"] is True
+if st.session_state.get("ats_run_completed", False) and not st.session_state.get("quiz_generation_triggered", False):
+    if st.button("🧬 Generate Skill-Gap screening Quiz", type="primary", use_container_width=True):
+        with st.spinner("Analyzing resume against job description..."):
+            st.session_state["missing_skills_set"] = {"GITHUB", "HTML", "CSS", "MONGODB", "AI"}
+            st.session_state["quiz_generation_triggered"] = True 
+        st.success("ATS Score evaluation complete!")
+        st.rerun()
+
+# If the system is waiting for the ATS process to finish, show a status indicator
+elif not st.session_state.get("ats_run_completed", False):
+    st.warning("⏳ Waiting for ATS Run to complete. (Check the box in the sidebar to simulate this!)")
+
+
+# --- STAGE 2: Core Algorithmic Logic Loop ---
+if st.session_state.get("quiz_generation_triggered", False) and st.session_state.get("generated_quiz_data") is None:
+    quiz_questions = []
+    topics_found = ["GITHUB", "HTML", "CSS", "MONGODB", "AI"]
+    MCQ_BANK_LOCAL = globals().get("MCQ_BANK", MCQ_BANK)
+
+    for topic in topics_found:
+        if topic not in MCQ_BANK_LOCAL:
+            continue
+        topic_questions = MCQ_BANK_LOCAL.get(topic, []) or []
+        if not topic_questions:
+            continue
+        available_questions = [q for q in topic_questions if q.get("id") not in st.session_state["used_question_ids"]]
+        
+        if not available_questions:
+            st.session_state["used_question_ids"] = set(q.get("id") for q in topic_questions if q.get("id") is not None)
+            available_questions = topic_questions
+        if not available_questions:
+            continue
+
+        selected_q = random.choice(available_questions)
+        qid = selected_q.get("id")
+        if qid is not None:
+            st.session_state["used_question_ids"].add(qid)
+
+        shuffled_options = list(selected_q.get("options", []))
+        random.shuffle(shuffled_options)
+
+        quiz_questions.append({
+            "topic": topic,
+            "question": selected_q.get("question", ""),
+            "options": shuffled_options,
+            "correct": selected_q.get("answer", ""),
+            "explanation": selected_q.get("explanation", ""),
+        })
+
+    if quiz_questions:
         st.session_state["generated_quiz_data"] = {
-            "keywords": ", ".join(k.upper() for k in missing_keywords[:6]),
-            "q1": f"Describe a scenario where you implemented {missing_keywords[0] if len(missing_keywords) > 0 else 'CSS'} to optimize systemic performance.",
-            "q2": f"What are the most common bottlenecks encountered when introducing {missing_keywords[1] if len(missing_keywords) > 1 else 'GIT'} into a legacy system?",
-            "q3": "Walk through your debugging process when a service encounters an unhandled runtime exception."
+            "keywords": ", ".join(topics_found),
+            "questions": quiz_questions
         }
-    else:
-        st.session_state["generated_quiz_data"] = None
-        st.warning("Please select or detect missing keywords first.")
+        st.rerun()
 
-# --- PERFECTLY ALIGNED DISPLAY CONTAINER ---
-if st.session_state["generated_quiz_data"]:
+
+# --- STAGE 3: UI Renderer Loop ---
+if st.session_state.get("generated_quiz_data"):
     quiz = st.session_state["generated_quiz_data"]
-    
-    # Bordered container creates a unified card wrapper
+    st.markdown("### 🧠 Live Candidate AI Quiz Generator")
     with st.container(border=True):
         st.markdown(f"### 📋 Technical Screening Quiz (`{quiz['keywords']}`)")
-        st.caption("Review the generated questions below. You can log candidate responses directly into the form.")
+        st.caption("Instruct the candidate to select their answers below. Results will update dynamically.")
         st.divider()
-        
-        # Question 1: Question text serves as the clean, direct label for the input box
-        st.text_area(
-            label=f"**1. Core Architecture:** {quiz['q1']}", 
-            key="ans_q1", 
-            placeholder="Type candidate response or notes here...", 
-            height=90
-        )
-        st.markdown("<br>", unsafe_allow_html=True) # Clean spacing element
-        
-        # Question 2
-        st.text_area(
-            label=f"**2. Integration Challenges:** {quiz['q2']}", 
-            key="ans_q2", 
-            placeholder="Type candidate response or notes here...", 
-            height=90
-        )
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # Question 3
-        st.text_area(
-            label=f"**3. Practical Application:** {quiz['q3']}", 
-            key="ans_q3", 
-            placeholder="Type candidate response or notes here...", 
-            height=90
-        )
-        st.divider()
-        with st.expander("💡 View Recruiter Evaluation Guide"):
-            st.markdown("**Look for these key indicators in their answers:**")
-            st.markdown(f"- Clear metrics regarding scalability and system stability when discussing `{quiz['keywords']}`.")
-            st.markdown("- Structural understanding of deployment strategies, version control, or execution contexts.")
+        for idx, item in enumerate(quiz["questions"], start=1):
+            st.markdown(f"**{idx}. [{item['topic']}]** {item['question']}")
+            selected_option = st.radio(
+                label=f"Choose an option for question {idx}",
+                options=item["options"],
+                index=None,
+                key=f"mcq_{idx}",
+                label_visibility="collapsed"
+            )
+            if selected_option:
+                if selected_option == item["correct"]:
+                    st.success("Correct Answer")
+                else:
+                    st.error("Incorrect Answer")
+                with st.expander("💡 View Explanation Guide"):
+                    st.markdown(f"**Correct Option:** `{item['correct']}`")
+                    st.markdown(f"**Why:** {item['explanation']}")                    
+            st.markdown("<br>", unsafe_allow_html=True)
