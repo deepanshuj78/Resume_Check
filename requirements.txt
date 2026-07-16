@@ -4,3 +4,4 @@ pandas
 spacy
 scikit-learn
 en_core_web_sm
+random
