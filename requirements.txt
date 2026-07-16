@@ -3,4 +3,3 @@ pdfplumber
 pandas
 spacy
 scikit-learn
-https://github.com
