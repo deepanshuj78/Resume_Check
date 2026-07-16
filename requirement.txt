@@ -1,6 +1,0 @@
-pdfplumber
-streamlit
-pandas
-spacy
-scikit-learn
-https://github.com
