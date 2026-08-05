@@ -1,6 +1,7 @@
 streamlit
 pdfplumber
 pandas
-spacy>=3.7.0
+pip>=23.0
+spacy>=3.7.2
 scikit-learn
 https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1.tar.gz
